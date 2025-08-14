@@ -1,3 +1,4 @@
+import streamlit as st
 import pandas as pd
 import numpy as np
 import re
@@ -9,10 +10,7 @@ EXCLUSION_LIST = [
 ]
 # -----------------------------------------------------------
 
-
-# ----- 모든 CSV 또는 XLSX 파일을 대상으로 설정 -----
 file_names = glob.glob("*.csv") + glob.glob("*.xlsx")
-# ---------------------------------------------
 
 therapist_name = "편현준"
 total_simplified_count = 0
@@ -68,20 +66,15 @@ for file in file_names:
                     for treatment in all_treatments:
                         treatment_str = str(treatment).strip()
                         
-                        # --- 최종 규칙: 숫자로 시작하거나 '(낮)'으로 시작하지 않는 항목은 모두 제외 ---
                         if not (re.match(r'^\d+', treatment_str) or treatment_str.startswith('(낮)')):
                             continue
-                        # -----------------------------------------------------------------
 
-                        # 중복 제거 로직 (환자 ID 또는 (낮) 전체 항목 기준)
                         current_patient_id = treatment_str.split()[0]
                         if not current_patient_id.startswith('(낮)'):
-                           # ID가 숫자인 경우
                            if current_patient_id != previous_patient_id:
                                treatments_to_count.append(treatment_str)
                            previous_patient_id = current_patient_id
                         else:
-                           # '(낮)'으로 시작하는 경우, 전체 문자열을 기준으로 중복 제거
                            if treatment_str != previous_patient_id:
                                treatments_to_count.append(treatment_str)
                            previous_patient_id = treatment_str
@@ -101,75 +94,3 @@ for file in file_names:
                         elif "변인혁" in treatment_str and "도수5" in treatment_str and "평가" in treatment_str: final_category = "도수8"
                         elif "박한나" in treatment_str and "도수5" in treatment_str and "평가" in treatment_str: final_category = "도수8"
                         elif "이성범" in treatment_str and "도수5" in treatment_str and "평가" in treatment_str: final_category = "도수9"
-                        elif "박종인" in treatment_str: final_category = "도수9"
-                        elif "강대환" in treatment_str: final_category = "pain9"
-                        elif "윤지운" in treatment_str and "도수8" in treatment_str and "단순검사" in treatment_str: final_category = "도수9"
-                        elif "정성엽" in treatment_str and "도수8" in treatment_str and "단순검사" in treatment_str: final_category = "도수9"
-                        elif "정성엽" in treatment_str and "도수7" in treatment_str and "평가" in treatment_str: final_category = "도수9"
-                        elif "고아현" in treatment_str and "도수8" in treatment_str and "단순검사" in treatment_str: final_category = "도수9"
-                        elif "변인혁" in treatment_str and "도수7" in treatment_str and "단순검사" in treatment_str: final_category = "도수8"
-                        elif "주영민" in treatment_str and "평가" in treatment_str and "도수" not in treatment_str: final_category = "NDT"
-                        elif "이준" in treatment_str and "평가" in treatment_str: final_category = "NDT"
-                        elif "박한나" in treatment_str: final_category = "도수8"
-                        elif "곽순욱" in treatment_str: final_category = "도수8"
-                        elif "문장민" in treatment_str: final_category = "도수9"
-                        elif "이덕헌" in treatment_str: final_category = "도수9"
-                        
-                        if not final_category:
-                            if re.search(r'\s18$', treatment_str): final_category = "도수18"
-                            elif "도수5" in treatment_str: final_category = "NDT"
-                            else:
-                                patterns = {'도수': r'도수(\d+)', '신장': r'신장(\d+)', 'pain': r'pain(\d+)', '충격파': r'충(\d+)'}
-                                for base, pat in patterns.items():
-                                    m = re.search(pat, treatment_str)
-                                    if m: final_category = f"{base}{m.group(1)}"; break
-                        
-                        if not final_category:
-                            if "NDT" in treatment_str: final_category = "NDT"
-                        
-                        if final_category:
-                            total_simplified_count += 1
-                            categorized_items.setdefault(final_category, []).append(treatment_str)
-
-    except Exception as e:
-        print(f"오류 발생 파일: {file}, 내용: {e}")
-
-# --- 최종 결과 출력 형식 ---
-user_counts_format = {
-    "도수5 (ndt)": [], "충격파8": [], "도수8": [], "도수9": [], 
-    "pain9": [], "신장9": [], "신장14": [], "도수16": [], "도수18": []
-}
-
-if 'NDT' in categorized_items:
-    user_counts_format["도수5 (ndt)"].extend(categorized_items.pop('NDT'))
-
-for category, items in categorized_items.items():
-    if category in user_counts_format:
-        user_counts_format[category].extend(items)
-    else: 
-        user_counts_format.setdefault(category, []).extend(items)
-
-# --- 1단계: 요약 출력 ---
-print(f"총 치료 건수: {total_simplified_count}")
-print("\n--- 항목별 분류 (요약) ---")
-
-display_order = ["도수5 (ndt)", "충격파8", "도수8", "도수9", "pain9", "신장9", "신장14", "도수16", "도수18"]
-sorted_summary = []
-remaining_summary = user_counts_format.copy()
-
-for category in display_order:
-    if category in remaining_summary:
-        sorted_summary.append((category, remaining_summary.pop(category)))
-sorted_summary.extend(sorted(remaining_summary.items()))
-
-for category, items in sorted_summary:
-     if items:
-        print(f"{category}: {len(items)} 건")
-
-# --- 2단계: 상세 내역 출력 ---
-print("\n--- 항목별 분류 (상세 내역) ---")
-for category, items in sorted_summary:
-     if items:
-        print(f"\n## {category}: {len(items)} 건 ##")
-        for item in sorted(items):
-            print(f"- {item}")
