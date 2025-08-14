@@ -94,3 +94,72 @@ for file in file_names:
                         elif "변인혁" in treatment_str and "도수5" in treatment_str and "평가" in treatment_str: final_category = "도수8"
                         elif "박한나" in treatment_str and "도수5" in treatment_str and "평가" in treatment_str: final_category = "도수8"
                         elif "이성범" in treatment_str and "도수5" in treatment_str and "평가" in treatment_str: final_category = "도수9"
+                        elif "박종인" in treatment_str: final_category = "도수9"
+                        elif "강대환" in treatment_str: final_category = "pain9"
+                        elif "윤지운" in treatment_str and "도수8" in treatment_str and "단순검사" in treatment_str: final_category = "도수9"
+                        elif "정성엽" in treatment_str and "도수8" in treatment_str and "단순검사" in treatment_str: final_category = "도수9"
+                        elif "정성엽" in treatment_str and "도수7" in treatment_str and "평가" in treatment_str: final_category = "도수9"
+                        elif "고아현" in treatment_str and "도수8" in treatment_str and "단순검사" in treatment_str: final_category = "도수9"
+                        elif "변인혁" in treatment_str and "도수7" in treatment_str and "단순검사" in treatment_str: final_category = "도수8"
+                        elif "주영민" in treatment_str and "평가" in treatment_str and "도수" not in treatment_str: final_category = "NDT"
+                        elif "이준" in treatment_str and "평가" in treatment_str: final_category = "NDT"
+                        elif "박한나" in treatment_str: final_category = "도수8"
+                        elif "곽순욱" in treatment_str: final_category = "도수8"
+                        elif "문장민" in treatment_str: final_category = "도수9"
+                        elif "이덕헌" in treatment_str: final_category = "도수9"
+                        
+                        if not final_category:
+                            if re.search(r'\s18$', treatment_str): final_category = "도수18"
+                            elif "도수5" in treatment_str: final_category = "NDT"
+                            else:
+                                patterns = {'도수': r'도수(\d+)', '신장': r'신장(\d+)', 'pain': r'pain(\d+)', '충격파': r'충(\d+)'}
+                                for base, pat in patterns.items():
+                                    m = re.search(pat, treatment_str)
+                                    if m: final_category = f"{base}{m.group(1)}"; break
+                        
+                        if not final_category:
+                            if "NDT" in treatment_str: final_category = "NDT"
+                        
+                        if final_category:
+                            total_simplified_count += 1
+                            categorized_items.setdefault(final_category, []).append(treatment_str)
+
+    except Exception as e:
+        st.error(f"오류 발생 파일: {file}, 내용: {e}")
+
+# --- 최종 결과 출력 ---
+user_counts_format = {
+    "도수5 (ndt)": [], "충격파8": [], "도수8": [], "도수9": [], 
+    "pain9": [], "신장9": [], "신장14": [], "도수16": [], "도수18": []
+}
+
+if 'NDT' in categorized_items:
+    user_counts_format["도수5 (ndt)"].extend(categorized_items.pop('NDT'))
+
+for category, items in categorized_items.items():
+    if category in user_counts_format:
+        user_counts_format[category].extend(items)
+    else: 
+        user_counts_format.setdefault(category, []).extend(items)
+
+display_order = ["도수5 (ndt)", "충격파8", "도수8", "도수9", "pain9", "신장9", "신장14", "도수16", "도수18"]
+sorted_summary = []
+remaining_summary = user_counts_format.copy()
+
+for category in display_order:
+    if category in remaining_summary:
+        sorted_summary.append((category, remaining_summary.pop(category)))
+sorted_summary.extend(sorted(remaining_summary.items()))
+
+st.subheader(f"총 치료 건수: {total_simplified_count}")
+
+st.markdown("### --- 항목별 분류 (요약) ---")
+for category, items in sorted_summary:
+    if items:
+        st.write(f"{category}: {len(items)} 건")
+
+st.markdown("### --- 항목별 분류 (상세 내역) ---")
+for category, items in sorted_summary:
+    if items:
+        st.write(f"**{category}: {len(items)} 건**")
+        st.text("\n".join(sorted(items)))
