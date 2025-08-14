@@ -4,15 +4,17 @@ import numpy as np
 import re
 
 # --------------------------------------------------------------------------
-# 위에서 보여드린 '최종 계산 엔진 코드'가 여기에 그대로 들어갑니다.
-# (이 코드는 숨겨져 있으며, app.py 파일 안에 함께 존재합니다)
-def analyze_files(file_list, exclusion_list):
+# 최종 계산 엔진 함수 (오류 보고 기능 강화)
+def analyze_files(file_list, exclusion_list, status_placeholder):
     therapist_name = "편현준"
     total_simplified_count = 0
     categorized_items = {}
 
     for file_obj in file_list:
         try:
+            # 상태 업데이트: 현재 어떤 파일을 처리 중인지 알려줌
+            status_placeholder.update(label=f"'{file_obj.name}' 파일 읽는 중...")
+            
             df_list = []
             if file_obj.name.endswith('.csv'):
                 try:
@@ -22,6 +24,8 @@ def analyze_files(file_list, exclusion_list):
             else:
                 xls = pd.ExcelFile(file_obj)
                 for sheet_name in xls.sheet_names:
+                    # 상태 업데이트: 어떤 시트를 처리 중인지 알려줌
+                    status_placeholder.update(label=f"'{file_obj.name}' 파일의 '{sheet_name}' 시트 분석 중...")
                     df_list.append(xls.parse(sheet_name, header=None))
 
             for df in df_list:
@@ -111,7 +115,7 @@ def analyze_files(file_list, exclusion_list):
                                 total_simplified_count += 1
                                 categorized_items.setdefault(final_category, []).append(treatment_str)
         except Exception as e:
-            st.error(f"{file_obj.name} 파일 처리 중 오류 발생: {e}")
+            st.error(f"'{file_obj.name}' 파일 처리 중 오류가 발생했습니다. 파일이 손상되었거나 양식이 다를 수 있습니다. (오류: {e})")
             
     return total_simplified_count, categorized_items
 # --------------------------------------------------------------------------
@@ -119,7 +123,7 @@ def analyze_files(file_list, exclusion_list):
 
 # --- 웹 앱 인터페이스 부분 ---
 
-st.title(' 치료 건수 자동 계산 프로그램')
+st.title(' therapeutic exercise counter')
 
 # 파일 업로드 (여러 파일 가능)
 uploaded_files = st.file_uploader("분석할 스케줄 파일을 업로드하세요 (여러 개 선택 가능)",
@@ -137,8 +141,10 @@ exclusion_list = [line.strip() for line in exclusion_text.split('\n') if line.st
 # 분석 시작 버튼
 if st.button('분석 시작'):
     if uploaded_files:
-        with st.spinner('파일을 분석 중입니다...'):
-            total_count, categorized_items = analyze_files(uploaded_files, exclusion_list)
+        # 'st.status'를 사용하여 진행 상태 표시
+        with st.status("분석을 시작합니다...", expanded=True) as status:
+            total_count, categorized_items = analyze_files(uploaded_files, exclusion_list, status)
+            status.update(label="분석 완료!", state="complete")
 
             # --- 최종 결과 출력 형식 ---
             user_counts_format = {
@@ -173,7 +179,6 @@ if st.button('분석 시작'):
             for category, items in sorted_summary:
                  if items:
                     with st.expander(f"▼ {category}: {len(items)} 건"):
-                        # 상세 내역을 표 형태로 보여주기
                         detail_df = pd.DataFrame(items, columns=['치료 내용'])
                         st.table(detail_df)
     else:
